@@ -117,7 +117,7 @@ zabbix_get -s <WIREGUARD_HOST_IP> -k wireguard.peer.last_handshake_elapsed[<PEER
 | `{$WG_PEER_NAME}` | Friendly peer name                | `Laptop 1`               |                    
 | `{$WG_PEER_KEY}`  | Public key for handshake tracking | `<PEER-PUBLIC-KEY>`      |                     
 
-You can duplicate the items in Zabbix and create multiple macro sets for multiple peers.
+You can duplicate the related items and triggers in the Zabbix template directly from the Zabbix UI to monitor multiple WireGuard peers.
 
 ---
 
