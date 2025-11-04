@@ -1,0 +1,104 @@
+zabbix_export:
+  version: '6.4'
+
+  template_groups:
+    -
+      uuid: 3e57bf0889e040b996ee675ec517daf5
+      name: Templates/Network
+
+  templates:
+    -
+      uuid: d1f5c3e2b6e34f2fa5f4c8e2b1e6d3a1
+      template: 'WireGuard Minimal'
+      name: 'WireGuard Minimal'
+      groups:
+        - name: Templates/Network
+      items:
+        -
+          uuid: 7a48997178c041ecac54b16087f89ced
+          name: 'WireGuard service status'
+          key: wireguard.service.status
+          type: ZABBIX_ACTIVE
+          delay: 30s
+          value_type: UNSIGNED
+          description: 'Returns 1 if WireGuard is active, 0 if inactive.'
+          preprocessing:
+            - type: BOOL_TO_DECIMAL
+              parameters: []
+          tags:
+            - tag: component
+              value: vpn
+
+        -
+          uuid: 31e79cf88db545e3a57b5988b1519f25
+          name: 'WireGuard version'
+          key: wireguard.version
+          type: ZABBIX_ACTIVE
+          delay: 10m
+          value_type: TEXT
+          description: 'Current installed WireGuard version.'
+          tags:
+            - tag: component
+              value: system
+
+        -
+          uuid: 46544f670be34844a3a6df64a6fb1bbd
+          name: 'WireGuard config checksum'
+          key: 'vfs.file.cksum[/etc/wireguard/wg0.conf]'
+          type: ZABBIX_ACTIVE
+          delay: 5m
+          value_type: UNSIGNED
+          description: 'Detects any change in /etc/wireguard/wg0.conf.'
+          tags:
+            - tag: component
+              value: config
+        
+        - uuid: 629ef88e7b5e4518bdb9b24b58a83332
+          name: 'Handshake age for {$WG_PEER_NAME}'
+          key: 'wireguard.peer.last_handshake_elapsed[{$WG_PEER_KEY}]'
+          type: ZABBIX_ACTIVE
+          value_type: UNSIGNED
+          units: s
+          delay: 60s
+          description: 'Seconds since last handshake for defined peer.'
+          tags:
+            - tag: component
+              value: vpn
+
+      macros:
+        -
+          macro: '{$WG_CRITICAL_PEER_IP}'
+          value: ''
+          description: 'Set this macro on the host or template to define the critical peer IP.'
+        - macro: '{$WG_PEER_NAME}'
+          value: ''
+          description: 'Friendly name of the peer (optional, used in item/trigger names)'
+        - macro: '{$WG_PEER_KEY}'
+          value: ''
+          description: 'WireGuard peer public key to monitor (required)'
+
+  triggers:
+    -
+      uuid: d4467667d87944c1a0be4f4a26f5d0c0
+      expression: 'last(/WireGuard Minimal/wireguard.service.status)=0'
+      name: 'WireGuard service inactive'
+      priority: HIGH
+      description: 'WireGuard service is not active.'
+    -
+      uuid: e2aa127b8a914cb393942442e0864a35
+      expression: 'change(/WireGuard Minimal/vfs.file.cksum[/etc/wireguard/wg0.conf])<>0'
+      name: 'WireGuard config changed'
+      priority: WARNING
+      description: 'WireGuard configuration file wg0.conf was modified.'
+    -
+      uuid: f29319249b95406d9f684ece7a0ee0e7
+      expression: 'change(/WireGuard Minimal/wireguard.version)<>0'
+      name: 'WireGuard version changed'
+      priority: INFO
+      description: 'WireGuard version has changed.'
+    - 
+      uuid: f79b093300ef4e858f6759efb3d5b69c
+      name: '{$WG_PEER_NAME} no handshake for 5m'
+      expression: 'last(/WireGuard Minimal/wireguard.peer.last_handshake_elapsed[{$WG_PEER_KEY}])>300'
+      priority: HIGH
+      description: 'No handshake from defined peer in 5 minutes.'
